@@ -408,6 +408,56 @@
       }
       [entry setObject:attendees forKey:@"attendees"];
     }
+    if(event.recurrenceRules!=nil){
+      NSMutableArray * recurrences = [[NSMutableArray alloc] init];
+      for (EKRecurrenceRule * recurrence in event.recurrenceRules) {
+            NSString *frequency = nil;
+            switch(recurrence.frequency) {
+            case EKRecurrenceFrequencyDaily:
+                frequency = @"daily";
+                break;
+            case EKRecurrenceFrequencyWeekly:
+                frequency = @"weekly";
+                break;
+            case EKRecurrenceFrequencyMonthly:
+                frequency = @"monthly";
+                break;
+            case EKRecurrenceFrequencyYearly:
+                frequency = @"yearly";
+                break;
+          }
+        NSMutableDictionary *recurrenceEntry = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
+                                              frequency, @"frequency",
+                                              @(recurrence.interval), @"interval",
+                                              [df stringFromDate:recurrence.recurrenceEnd.endDate], @'endDate',
+                                              nil];
+        [recurrences addObject:recurrenceEntry];
+      }
+      [entry setObject:recurrences forKey:@"recurrences"];
+    }
+    if(event.alarms!=nil){
+      //NSMutableArray * alarms = [[NSMutableArray alloc] init];
+      NSUInteger index = 0;
+      /*NSMutableDictionary *alarmEntry = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
+                                          nil, @"firstReminderMinutes",
+                                          nil,@"secondReminderMinutes"
+                                          nil];*/
+      NSMutableDictionary *alarmEntry = [[NSMutableDictionary alloc] init];
+
+      for (EKAlarm * alarm in event.alarms) {
+        /*NSMutableDictionary *alarmEntry = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
+                                          @(alarm.relativeOffset), @"reminderMinutes",
+                                          nil];*/
+          if(index==0){
+            [alarmEntry setObject:@(alarm.relativeOffset/60) forKey:@"firstReminderMinutes"];
+          }
+          else if(index==1){
+            [alarmEntry setObject:@(alarm.relativeOffset/60) forKey:@"secondReminderMinutes"];
+          }
+        index++;
+      }
+      [entry setObject:alarmEntry forKey:@"alarms"];
+    }
 
     [entry setObject:event.calendarItemIdentifier forKey:@"id"];
     [results addObject:entry];
