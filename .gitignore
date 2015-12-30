@@ -2,4 +2,5 @@ demo/platforms
 demo/plugins
 *.ipr
 *.iml
+*.DS_Store
 .idea/

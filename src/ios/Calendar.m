@@ -429,7 +429,7 @@
         NSMutableDictionary *recurrenceEntry = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
                                               frequency, @"frequency",
                                               @(recurrence.interval), @"interval",
-                                              [df stringFromDate:recurrence.recurrenceEnd.endDate], @'endDate',
+                                              [df stringFromDate:recurrence.recurrenceEnd.endDate], @"endDate",
                                               nil];
         [recurrences addObject:recurrenceEntry];
       }
