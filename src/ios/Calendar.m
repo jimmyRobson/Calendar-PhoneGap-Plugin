@@ -516,12 +516,9 @@
       [entry setObject:alarmEntry forKey:@"alarms"];
     }
     if(event.isDetached!=nil){
-      //printf(@(isDetached));
-      NSString *detached = nil;
+      NSNumber *detached = @NO;
       if(event.isDetached){
-        detached = @"true";
-      }else{
-        detached = @"false";
+        detached = @YES;
       }
       [entry setObject:detached forKey:@"isDetached"];
     }

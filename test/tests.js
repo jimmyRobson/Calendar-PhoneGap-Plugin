@@ -60,7 +60,8 @@ exports.defineAutoTests = function() {
                                 interval:2,frequency:'daily'}],
                   title:'oh wow',
                   message:'Some notes about this event.',
-                  calendar:'MyCreatedCalendar'
+                  calendar:'MyCreatedCalendar',
+                  isDetached:true
                   }]
               }];
     function findEventCheckValues (item){
