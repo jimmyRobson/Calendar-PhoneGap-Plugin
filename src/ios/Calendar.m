@@ -157,18 +157,23 @@
 
       // Find matches
       if (calEventID != nil) {
-          theEvent = [self.eventStore calendarItemWithIdentifier:calEventID];
+          //theEvent = [self.eventStore calendarItemWithIdentifier:calEventID];
+        NSArray *matchingEvents = [self findEKEventsWithEventId:calEventID title:title location:location notes:notes startDate:myStartDate endDate:myEndDate calendars:calendars];
+        // Just grab last event for now
+        theEvent = [matchingEvents lastObject];
       }
 
     if (theEvent == nil) {
       NSArray *matchingEvents = [self findEKEventsWithTitle:title location:location notes:notes startDate:myStartDate endDate:myEndDate calendars:calendars];
-
-      if (matchingEvents.count == 1) {
+      // Just grab last event for now
+      theEvent = [matchingEvents lastObject];
+      //NSLog(@"My number is %i", matchingEvents.count);
+      /*if (matchingEvents.count == 1) {
 
         // Presume we have to have an exact match to modify it!
         // Need to load this event from an EKEventStore so we can edit it
         theEvent = [self.eventStore eventWithIdentifier:((EKEvent*)[matchingEvents lastObject]).eventIdentifier];
-      }
+      }*/
     }
 
     CDVPluginResult *pluginResult = nil;
@@ -187,10 +192,12 @@
       if (ntitle) {
         theEvent.title = ntitle;
       }
+      //NSLog(@"location: %@", nlocation);
       if (nlocation) {
         theEvent.location = nlocation;
       }
       if (nnotes) {
+        //NSLog(@"notes: %@", nnotes);
         theEvent.notes = nnotes;
       }
       if (nstartTime) {
@@ -223,6 +230,7 @@
       NSNumber* intervalAmount = [newCalOptions objectForKey:@"recurrenceInterval"];
 
       if (recurrence != (id)[NSNull null]) {
+        NSLog(@" recurrence => %@ ",  recurrence );
         EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
                                                                               interval: intervalAmount.integerValue
                                                                                    end: nil];
@@ -245,16 +253,16 @@
       NSError *error = nil;
       [self.eventStore saveEvent:theEvent span:EKSpanThisEvent error:&error];
 
-
       // Check error code + return result
       if (error) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.userInfo.description];
       } else {
+        //NSLog(@" error => %@ ", [command callbackId] );
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:theEvent.calendarItemIdentifier];
       }
     } else {
-      // Otherwise return a no result error (could be more than 1, but not a biggie)
-      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_NO_RESULT];
+      // No result was found...
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No event was found to edit"];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
   }];
@@ -314,6 +322,55 @@
   if (location != (id)[NSNull null] && location.length > 0) {
     location = [location stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
     [predicateStrings addObject:[NSString stringWithFormat:@"location == '%@'", location]];
+  }
+  if (notes != (id)[NSNull null] && notes.length > 0) {
+    notes = [notes stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
+    [predicateStrings addObject:[NSString stringWithFormat:@"notes == '%@'", notes]];
+  }
+
+  NSString *predicateString = [predicateStrings componentsJoinedByString:@" AND "];
+
+  NSPredicate *matches;
+  NSArray  *datedEvents, *matchingEvents;
+
+  if (predicateString.length > 0) {
+    matches = [NSPredicate predicateWithFormat:predicateString];
+
+    datedEvents = [self.eventStore eventsMatchingPredicate:[eventStore predicateForEventsWithStartDate:startDate endDate:endDate calendars:calendars]];
+
+    matchingEvents = [datedEvents filteredArrayUsingPredicate:matches];
+  } else {
+
+    datedEvents = [self.eventStore eventsMatchingPredicate:[eventStore predicateForEventsWithStartDate:startDate endDate:endDate calendars:calendars]];
+
+    matchingEvents = datedEvents;
+  }
+
+  return matchingEvents;
+}
+
+- (NSArray*) findEKEventsWithEventId: (NSString *)eventId
+                           title: (NSString *)title
+                        location: (NSString *)location
+                           notes: (NSString *)notes
+                       startDate: (NSDate *)startDate
+                         endDate: (NSDate *)endDate
+                       calendars: (NSArray*)calendars {
+  // This function is identical to findEKEventsWithTitle except
+  // it adds the eventId to the event critera, gets an instance
+  // based on the other attibutes passed in.
+  NSMutableArray *predicateStrings = [NSMutableArray arrayWithCapacity:3];
+  if (title != (id)[NSNull null] && title.length > 0) {
+    title = [title stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
+    [predicateStrings addObject:[NSString stringWithFormat:@"title contains[c] '%@'", title]];
+  }
+  if (location != (id)[NSNull null] && location.length > 0) {
+    location = [location stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
+    [predicateStrings addObject:[NSString stringWithFormat:@"location == '%@'", location]];
+  }
+  if (eventId != (id)[NSNull null] && eventId.length > 0) {
+    eventId = [eventId stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
+    [predicateStrings addObject:[NSString stringWithFormat:@"eventIdentifier=='%@'", eventId]];
   }
   if (notes != (id)[NSNull null] && notes.length > 0) {
     notes = [notes stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
@@ -458,7 +515,16 @@
       }
       [entry setObject:alarmEntry forKey:@"alarms"];
     }
-
+    if(event.isDetached!=nil){
+      //printf(@(isDetached));
+      NSString *detached = nil;
+      if(event.isDetached){
+        detached = @"true";
+      }else{
+        detached = @"false";
+      }
+      [entry setObject:detached forKey:@"isDetached"];
+    }
     [entry setObject:event.calendarItemIdentifier forKey:@"id"];
     [results addObject:entry];
   }

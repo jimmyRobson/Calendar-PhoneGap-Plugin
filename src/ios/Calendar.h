@@ -17,6 +17,14 @@
                          endDate: (NSDate *)endDate
                        calendars: (NSArray *)calendars;
 
+-(NSArray*)findEKEventsWithEventId: (NSString *)eventId
+						   title: (NSString *)title
+                        location: (NSString *)location
+                           notes: (NSString *)notes
+                       startDate: (NSDate *)startDate
+                         endDate: (NSDate *)endDate
+                       calendars: (NSArray *)calendars;
+
 - (void)hasReadPermission:(CDVInvokedUrlCommand*)command;
 - (void)requestReadPermission:(CDVInvokedUrlCommand*)command;
 
