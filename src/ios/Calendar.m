@@ -115,6 +115,11 @@
   NSString* nnotes     = [options objectForKey:@"newNotes"];
   NSNumber* nstartTime = [options objectForKey:@"newStartTime"];
   NSNumber* nendTime   = [options objectForKey:@"newEndTime"];
+  BOOL spanFuture = [[options objectForKey:@"spanFuture"] boolValue];
+  __block NSDate* repeatEndDatePreviousEvent;
+  NSMutableArray* pastRecurrenceRules = [[NSMutableArray alloc] init];
+  NSMutableArray* pastAlarms = [[NSMutableArray alloc] init];
+  NSLog(@"spanFuture is %d", spanFuture);
 
   NSTimeInterval _startInterval = [startTime doubleValue] / 1000; // strip millis
   NSDate *myStartDate = [NSDate dateWithTimeIntervalSince1970:_startInterval];
@@ -158,11 +163,30 @@
       // Find matches
       if (calEventID != nil) {
           //theEvent = [self.eventStore calendarItemWithIdentifier:calEventID];
-        NSArray *matchingEvents = [self findEKEventsWithEventId:calEventID title:title location:location notes:notes startDate:myStartDate endDate:myEndDate calendars:calendars];
+        EKEvent *originalEvent = [self.eventStore eventWithIdentifier:calEventID];
+        NSDate* startDateOrigin = originalEvent.startDate;
+        /*NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+        [formatter setDateFormat:@"YYYY-MM-dd"];
+        NSLog(@"start date origin %@", [formatter stringFromDate:myEndDate]);*/
+        //NSArray *pastMatchingEvents = [self findEKEventsWithTitle:title location:location notes:notes startDate:startDateOrigin endDate:myEndDate calendars:calendars];
+        //NSLog(@"EVENT ID  = %@", calEventID);
+        
+        NSArray *pastToCurrentMatchingEvents = [self findEKEventsWithEventId:calEventID title:title location:location notes:notes startDate:startDateOrigin endDate:myEndDate calendars:calendars];
+        if([pastToCurrentMatchingEvents count]>1){
+          repeatEndDatePreviousEvent = [pastToCurrentMatchingEvents[ [pastToCurrentMatchingEvents count]-2] startDate];
+        }
+        //EKEvent *lastEvent = [pastMatchingEvents lastObject];
+        //NSDate* lastReccuranceEnd = lastEvent.startDate;
+        //NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+        /*[formatter setDateFormat:@"YYYY-MM-dd"];
+        for (EKEvent *event in pastToCurrentMatchingEvents) {
+          NSLog(@"start date %@", [formatter stringFromDate:event.startDate]);
+        }*/
         // Just grab last event for now
-        theEvent = [matchingEvents lastObject];
-      }
+        theEvent = [pastToCurrentMatchingEvents lastObject];
 
+         //NSLog(@"start date %@", [formatter stringFromDate:repeatEndDatePreviousEvent]);
+      }
     if (theEvent == nil) {
       NSArray *matchingEvents = [self findEKEventsWithTitle:title location:location notes:notes startDate:myStartDate endDate:myEndDate calendars:calendars];
       // Just grab last event for now
@@ -175,7 +199,9 @@
         theEvent = [self.eventStore eventWithIdentifier:((EKEvent*)[matchingEvents lastObject]).eventIdentifier];
       }*/
     }
-
+    /*NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"YYYY-MM-dd"];
+    NSLog(@"start date %@", [formatter stringFromDate:theEvent.startDate]);*/
     CDVPluginResult *pluginResult = nil;
     if (theEvent != nil) {
       NSDictionary* newCalOptions = [options objectForKey:@"newOptions"];
@@ -211,6 +237,7 @@
 
       // remove any existing alarms because there would be no other way to remove them
       for (EKAlarm *alarm in theEvent.alarms) {
+        [pastAlarms addObject:alarm];
         [theEvent removeAlarm:alarm];
       }
 
@@ -229,8 +256,15 @@
       NSString* recurrence = [newCalOptions objectForKey:@"recurrence"];
       NSNumber* intervalAmount = [newCalOptions objectForKey:@"recurrenceInterval"];
 
-      if (recurrence != (id)[NSNull null]) {
-        NSLog(@" recurrence => %@ ",  recurrence );
+      if ((recurrence != (id)[NSNull null]) && (spanFuture==1) &&
+        (theEvent.isDetached!=TRUE)) {
+        // Only add recurrences if the span applies to future events
+        // and the item is not detached...
+        for (EKRecurrenceRule *rule in theEvent.recurrenceRules) {
+          //remove existing recurrenceRules.
+          [pastRecurrenceRules addObject:rule];
+          [theEvent removeRecurrenceRule:rule];
+        }
         EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
                                                                               interval: intervalAmount.integerValue
                                                                                    end: nil];
@@ -251,7 +285,36 @@
 
       // Now save the new details back to the store
       NSError *error = nil;
-      [self.eventStore saveEvent:theEvent span:EKSpanThisEvent error:&error];
+      if(spanFuture==1){
+        [self.eventStore saveEvent:theEvent span:EKSpanFutureEvents error:&error];
+        if(error){
+          // Send error right away and don't proceed with saving the other updates, 
+          // which depend on it saving correctly.
+          pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.userInfo.description];
+          [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+
+        if(repeatEndDatePreviousEvent){// There was a previous event that had a different recurrence.
+          EKEvent *pastEvent = [self.eventStore eventWithIdentifier:calEventID];
+          for (EKAlarm *alarm in pastAlarms) {
+            // Have to create new alarms to get this work.
+            EKAlarm *reminder = [EKAlarm alarmWithRelativeOffset:alarm.relativeOffset];
+            [pastEvent addAlarm:reminder];
+          }
+          for (EKRecurrenceRule *rule in pastRecurrenceRules) {
+            // Have to create new recurrences to get this work.
+            EKRecurrenceEnd *end = [EKRecurrenceEnd recurrenceEndWithEndDate:repeatEndDatePreviousEvent];
+            EKRecurrenceRule *newRule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: rule.frequency
+                                                                              interval: rule.interval
+                                                                                   end: end];
+            [pastEvent addRecurrenceRule:newRule]; 
+          }
+          [self.eventStore saveEvent:pastEvent span:EKSpanFutureEvents error:&error];
+        }
+      }else{
+        [self.eventStore saveEvent:theEvent span:EKSpanThisEvent error:&error];
+      }
+      
 
       // Check error code + return result
       if (error) {
@@ -394,8 +457,19 @@
 
     matchingEvents = datedEvents;
   }
+  NSArray *sortedResults = [matchingEvents sortedArrayUsingSelector:@selector(compareStartDateWithEvent:)];
+  //NSMutableArray *idMatchingEvents = [[NSMutableArray alloc] init];
+  /*for(EKEvent* event in datedEvents){
+    NSLog(@"Found ID  = %@", event.eventIdentifier);
+    NSLog(@"Parameter ID  = %@", eventId);
+    if ([event.eventIdentifier isEqualToString: eventId]) {
+      [idMatchingEvents addObject:event];
+    }
+  }*/
 
-  return matchingEvents;
+  //return matchingEvents;
+  return sortedResults;
+
 }
 
 - (EKCalendar*) findEKCalendar: (NSString *)calendarName {
@@ -668,7 +742,8 @@
     if (error) {
       pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.userInfo.description];
     } else {
-      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:myEvent.calendarItemIdentifier];
+      //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:myEvent.calendarItemIdentifier];
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:myEvent.eventIdentifier];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
   }];
