@@ -1,3 +1,6 @@
+#import <Foundation/Foundation.h>
+#import <Cordova/CDVPlugin.h>
+#import <EventKitUI/EventKitUI.h>
 #import <EventKit/EventKit.h>
 
 @interface Calendar : CDVPlugin <EKEventEditViewDelegate>
