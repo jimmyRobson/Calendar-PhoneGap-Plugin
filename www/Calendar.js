@@ -75,6 +75,11 @@ Calendar.prototype.getCalendarOptions = function () {
     recurrence: null, // options are: 'daily', 'weekly', 'monthly', 'yearly'
     recurrenceInterval: 1, // only used when recurrence is set
     recurrenceEndDate: null,
+    daysOfTheWeek:[],
+    daysOfTheMonth:[],
+    monthsOfTheYear:[],
+    weeksOfTheYear:[],
+    setPositions:[],
     calendarName: null,
     calendarId: null,
     url: null

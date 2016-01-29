@@ -261,13 +261,23 @@
         // Only add recurrences if the span applies to future events
         // and the item is not detached...
         for (EKRecurrenceRule *rule in theEvent.recurrenceRules) {
-          //remove existing recurrenceRules.
+          //remove and save existing recurrenceRules.
           [pastRecurrenceRules addObject:rule];
           [theEvent removeRecurrenceRule:rule];
         }
+        NSMutableDictionary * detailedRecurrence = [self createDetailedRecDictionary:newCalOptions];
         EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
+                                                                            interval: intervalAmount.integerValue
+                                                                       daysOfTheWeek: detailedRecurrence[@"daysOfTheWeek"]
+                                                                      daysOfTheMonth: detailedRecurrence[@"daysOfTheMonth"]
+                                                                      monthsOfTheYear:detailedRecurrence[@"monthsOfTheYear"]
+                                                                      weeksOfTheYear:detailedRecurrence[@"weeksOfTheYear"]
+                                                                      daysOfTheYear:nil
+                                                                        setPositions:detailedRecurrence[@"setPositions"]
+                                                                                 end: nil];
+        /*EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
                                                                               interval: intervalAmount.integerValue
-                                                                                   end: nil];
+                                                                                   end: nil];*/
         NSString* recurrenceEndTime = [newCalOptions objectForKey:@"recurrenceEndTime"];
         if (recurrenceEndTime != nil) {
           NSTimeInterval _recurrenceEndTimeInterval = [recurrenceEndTime doubleValue] / 1000; // strip millis
@@ -306,6 +316,12 @@
             EKRecurrenceEnd *end = [EKRecurrenceEnd recurrenceEndWithEndDate:repeatEndDatePreviousEvent];
             EKRecurrenceRule *newRule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: rule.frequency
                                                                               interval: rule.interval
+                                                                        daysOfTheWeek: rule.daysOfTheWeek
+                                                                        daysOfTheMonth: rule.daysOfTheMonth
+                                                                        monthsOfTheYear:rule.monthsOfTheYear
+                                                                        weeksOfTheYear:rule.weeksOfTheYear
+                                                                        daysOfTheYear:nil
+                                                                        setPositions:rule.setPositions
                                                                                    end: end];
             [pastEvent addRecurrenceRule:newRule]; 
           }
@@ -556,12 +572,48 @@
             case EKRecurrenceFrequencyYearly:
                 frequency = @"yearly";
                 break;
-          }
+            }
         NSMutableDictionary *recurrenceEntry = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
                                               frequency, @"frequency",
                                               @(recurrence.interval), @"interval",
                                               [df stringFromDate:recurrence.recurrenceEnd.endDate], @"endDate",
                                               nil];
+
+        if([recurrence.daysOfTheWeek count] >0){
+          NSMutableArray * daysOfTheWeek = [[NSMutableArray alloc] init];
+          for(EKRecurrenceDayOfWeek *day in recurrence.daysOfTheWeek){
+            [daysOfTheWeek addObject: [NSNumber numberWithInt:day.dayOfTheWeek]];
+          }
+          [recurrenceEntry setObject:daysOfTheWeek forKey:@"daysOfTheWeek"];
+        }
+        if([recurrence.daysOfTheMonth count] >0){
+          NSMutableArray * daysOfTheMonth = [[NSMutableArray alloc] init];
+          for(NSNumber *day in recurrence.daysOfTheMonth){
+            [daysOfTheMonth addObject:day];
+          }
+          [recurrenceEntry setObject:daysOfTheMonth forKey:@"daysOfTheMonth"];
+        }
+        if([recurrence.monthsOfTheYear count] >0){
+          NSMutableArray * monthsOfTheYear = [[NSMutableArray alloc] init];
+          for(NSNumber *month in recurrence.monthsOfTheYear){
+            [monthsOfTheYear addObject:month];
+          }
+          [recurrenceEntry setObject:monthsOfTheYear forKey:@"monthsOfTheYear"];
+        }
+        if([recurrence.weeksOfTheYear count] >0){
+          NSMutableArray * weeksOfTheYear = [[NSMutableArray alloc] init];
+          for(NSNumber *week in recurrence.weeksOfTheYear){
+            [weeksOfTheYear addObject:week];
+          }
+          [recurrenceEntry setObject:weeksOfTheYear forKey:@"weeksOfTheYear"];
+        }
+        if([recurrence.setPositions count] >0){
+          NSMutableArray * setPositions = [[NSMutableArray alloc] init];
+          for(NSNumber *position in recurrence.setPositions){
+            [setPositions addObject:position];
+          }
+          [recurrenceEntry setObject:setPositions forKey:@"setPositions"];
+        }
         [recurrences addObject:recurrenceEntry];
       }
       [entry setObject:recurrences forKey:@"recurrences"];
@@ -600,6 +652,41 @@
     [results addObject:entry];
   }
   return results;
+}
+- (NSMutableDictionary*) createDetailedRecDictionary: (NSDictionary*)calOptions {
+  NSMutableDictionary *result = [[NSMutableDictionary alloc] init];
+  NSMutableArray *daysOfWeekArray = [[NSMutableArray alloc] init];
+    for(NSNumber *day in calOptions[@"daysOfTheWeek"]){
+      [daysOfWeekArray addObject:[EKRecurrenceDayOfWeek dayOfWeek:day.integerValue]];
+    }
+  [result setObject:daysOfWeekArray forKey:@"daysOfTheWeek"];
+
+  NSMutableArray *daysOfMonthArray = [[NSMutableArray alloc] init];
+    for(NSNumber *day in calOptions[@"daysOfTheMonth"]){
+      //NSLog(@"month day = %@", day.stringValue);
+      [daysOfMonthArray addObject:day];
+    }
+  [result setObject:daysOfMonthArray forKey:@"daysOfTheMonth"];
+
+  NSMutableArray *monthsOfTheYear = [[NSMutableArray alloc] init];
+    for(NSNumber *month in calOptions[@"monthsOfTheYear"]){
+      [monthsOfTheYear addObject:month];
+    }
+  [result setObject:monthsOfTheYear forKey:@"monthsOfTheYear"];
+
+  NSMutableArray *weeksOfTheYear = [[NSMutableArray alloc] init];
+    for(NSNumber *week in calOptions[@"weeksOfTheYear"]){
+      [weeksOfTheYear addObject:week];
+    }
+  [result setObject:weeksOfTheYear forKey:@"weeksOfTheYear"];
+
+  NSMutableArray *setPositions = [[NSMutableArray alloc] init];
+    for(NSNumber *position in calOptions[@"setPositions"]){
+      [setPositions addObject:position];
+    }
+  [result setObject:setPositions forKey:@"setPositions"];
+
+  return result;
 }
 
 #pragma mark Cordova functions
@@ -724,8 +811,16 @@
     }
 
     if (recurrence != (id)[NSNull null]) {
+      NSMutableDictionary * detailedRecurrence = [self createDetailedRecDictionary:calOptions];
+      
       EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
                                                                             interval: recurrenceIntervalAmount.integerValue
+                                                                       daysOfTheWeek: detailedRecurrence[@"daysOfTheWeek"]
+                                                                      daysOfTheMonth: detailedRecurrence[@"daysOfTheMonth"]
+                                                                      monthsOfTheYear:detailedRecurrence[@"monthsOfTheYear"]
+                                                                      weeksOfTheYear:detailedRecurrence[@"weeksOfTheYear"]
+                                                                      daysOfTheYear:nil
+                                                                        setPositions:detailedRecurrence[@"setPositions"]
                                                                                  end: nil];
       if (recurrenceEndTime != nil) {
         NSTimeInterval _recurrenceEndTimeInterval = [recurrenceEndTime doubleValue] / 1000; // strip millis
