@@ -44,6 +44,7 @@
 
 - (void)findEventWithOptions:(CDVInvokedUrlCommand*)command;
 - (void)findAllEventsInNamedCalendar:(CDVInvokedUrlCommand*)command;
+- (void)findAllEventsInNamedCalendarForTests:(CDVInvokedUrlCommand*)command;
 
 - (void)listCalendars:(CDVInvokedUrlCommand*)command;
 - (void)deleteEvent:(CDVInvokedUrlCommand*)command;

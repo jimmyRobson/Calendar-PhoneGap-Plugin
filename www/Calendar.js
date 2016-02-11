@@ -185,6 +185,12 @@ Calendar.prototype.findAllEventsInNamedCalendar = function (calendarName, succes
   }]);
 };
 
+Calendar.prototype.findAllEventsInNamedCalendarForTests = function (calendarName, successCallback, errorCallback) {
+  cordova.exec(successCallback, errorCallback, "Calendar", "findAllEventsInNamedCalendarForTests", [{
+    "calendarName": calendarName
+  }]);
+};
+
 Calendar.prototype.deleteEvent = function (title, location, notes, startDate, endDate, successCallback, errorCallback) {
   if (!(startDate instanceof Date && endDate instanceof Date)) {
     errorCallback("startDate and endDate must be JavaScript Date Objects");

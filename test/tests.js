@@ -352,7 +352,7 @@ exports.defineAutoTests = function() {
         it(item.testShould+" for input "+itemIndex.toString(), function(done) {
 
           var success = function(result) { 
-            window.plugins.calendar.findAllEventsInNamedCalendar(item.editedItem.calendarName,
+            window.plugins.calendar.findAllEventsInNamedCalendarForTests(item.editedItem.calendarName,
                   successFind,error);
           };
           var successFind = function(result){
@@ -598,7 +598,7 @@ exports.defineAutoTests = function() {
         it(item.testShould+" for input "+itemIndex.toString(), function(done) {
 
           var success = function(result) { 
-            window.plugins.calendar.findAllEventsInNamedCalendar(item.calendarName,
+            window.plugins.calendar.findAllEventsInNamedCalendarTests(item.calendarName,
                   successFind,error);
           };
           var successFind = function(result){

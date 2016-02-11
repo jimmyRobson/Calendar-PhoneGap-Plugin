@@ -993,6 +993,40 @@
   }
   [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
+- (void) findAllEventsInNamedCalendarForTests:(CDVInvokedUrlCommand*)command {
+  // This is a reworking of findAllEventsInNamedCalendar for test.
+  // Because you can only search by four year intervals:
+  // findAllEventsInNamedCalendar only searches for present to future events.
+  // Many of the test cases are now in the past...
+  NSDictionary* options = [command.arguments objectAtIndex:0];
+  NSString* calendarName = [options objectForKey:@"calendarName"];
+  EKCalendar* calendar = [self findEKCalendar:calendarName];
+  CDVPluginResult *pluginResult = nil;
+
+  if (calendar == nil) {
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Could not find calendar"];
+  } else {
+    NSDateComponents *dateInPast  =[[NSDateComponents alloc] init];
+    [dateInPast setYear: 2015];
+    [dateInPast setDay: 1];
+    [dateInPast setMonth:1];
+    NSCalendar *g = [[ NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+    NSDate *startDate = [g dateFromComponents:dateInPast];
+    NSDateComponents *dateInFuture  =[[NSDateComponents alloc] init];
+    [dateInFuture setYear: 2018];
+    [dateInFuture setDay: 1];
+    [dateInFuture setMonth:1];
+    NSDate *endDate = [g dateFromComponents:dateInFuture];
+    NSLog(@"%@", endDate);
+    NSArray *calendarArray = [NSArray arrayWithObject:calendar];
+    NSPredicate *fetchCalendarEvents = [eventStore predicateForEventsWithStartDate:startDate endDate:endDate calendars:calendarArray];
+    NSArray *matchingEvents = [eventStore eventsMatchingPredicate:fetchCalendarEvents];
+    NSMutableArray * eventsDataArray = [self eventsToDataArray:matchingEvents];
+
+    pluginResult = [CDVPluginResult resultWithStatus: CDVCommandStatus_OK messageAsArray:eventsDataArray];
+  }
+  [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
 
 
 - (void) findEventWithOptions:(CDVInvokedUrlCommand*)command {
