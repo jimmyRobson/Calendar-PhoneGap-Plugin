@@ -598,7 +598,7 @@ exports.defineAutoTests = function() {
         it(item.testShould+" for input "+itemIndex.toString(), function(done) {
 
           var success = function(result) { 
-            window.plugins.calendar.findAllEventsInNamedCalendarTests(item.calendarName,
+            window.plugins.calendar.findAllEventsInNamedCalendarForTests(item.calendarName,
                   successFind,error);
           };
           var successFind = function(result){
