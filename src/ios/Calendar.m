@@ -97,7 +97,6 @@
   // default to daily, so invoke this method only when recurrence is set
   return EKRecurrenceFrequencyDaily;
 }
-
 - (void) modifyEventWithOptions:(CDVInvokedUrlCommand*)command {
   NSDictionary* options = [command.arguments objectAtIndex:0];
   NSString* title      = [options objectForKey:@"title"];
@@ -171,6 +170,22 @@
         if([pastToCurrentMatchingEvents count]>1){
           repeatEndDatePreviousEvent = [pastToCurrentMatchingEvents[ [pastToCurrentMatchingEvents count]-2] startDate];
         }
+        NSDictionary* newCalOptions = [options objectForKey:@"newOptions"];
+        NSNumber* intervalAmount = [newCalOptions objectForKey:@"recurrenceInterval"];
+        /*NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+        [formatter setDateFormat:@"YYYY-MM-dd"];
+        NSLog(@"start date find %@", [formatter stringFromDate:repeatEndDatePreviousEvent]);*/
+        if(repeatEndDatePreviousEvent!=nil && intervalAmount==nil){
+          
+          for (EKRecurrenceRule *rule in originalEvent.recurrenceRules) {
+            // Have to create new recurrences to get this work.
+            EKRecurrenceEnd *end = [EKRecurrenceEnd recurrenceEndWithEndDate:repeatEndDatePreviousEvent];
+            rule.recurrenceEnd = end;
+          }
+          NSError *error = nil;
+          [self.eventStore saveEvent:originalEvent span:EKSpanFutureEvents error:&error];
+          theEvent = [EKEvent eventWithEventStore: self.eventStore];
+        }
         //EKEvent *lastEvent = [pastMatchingEvents lastObject];
         //NSDate* lastReccuranceEnd = lastEvent.startDate;
         //NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
@@ -179,8 +194,9 @@
           NSLog(@"start date %@", [formatter stringFromDate:event.startDate]);
         }*/
         // Just grab last event for now
-        theEvent = [pastToCurrentMatchingEvents lastObject];
-
+        else{
+          theEvent = [pastToCurrentMatchingEvents lastObject];
+        }
          //NSLog(@"start date %@", [formatter stringFromDate:repeatEndDatePreviousEvent]);
       }
     if (theEvent == nil) {
@@ -252,8 +268,7 @@
       NSString* recurrence = [newCalOptions objectForKey:@"recurrence"];
       NSNumber* intervalAmount = [newCalOptions objectForKey:@"recurrenceInterval"];
 
-      if ((recurrence != (id)[NSNull null]) && (spanFuture==1) &&
-        (theEvent.isDetached!=TRUE)) {
+      if ((spanFuture==1) && (theEvent.isDetached!=TRUE)) {
         // Only add recurrences if the span applies to future events
         // and the item is not detached...
         for (EKRecurrenceRule *rule in theEvent.recurrenceRules) {
@@ -261,27 +276,29 @@
           [pastRecurrenceRules addObject:rule];
           [theEvent removeRecurrenceRule:rule];
         }
-        NSMutableDictionary * detailedRecurrence = [self createDetailedRecDictionary:newCalOptions];
-        EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
-                                                                            interval: intervalAmount.integerValue
-                                                                       daysOfTheWeek: detailedRecurrence[@"daysOfTheWeek"]
-                                                                      daysOfTheMonth: detailedRecurrence[@"daysOfTheMonth"]
-                                                                      monthsOfTheYear:detailedRecurrence[@"monthsOfTheYear"]
-                                                                      weeksOfTheYear:detailedRecurrence[@"weeksOfTheYear"]
-                                                                      daysOfTheYear:nil
-                                                                        setPositions:detailedRecurrence[@"setPositions"]
-                                                                                 end: nil];
-        /*EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
+        if(intervalAmount != nil){ // There must be an interval amount to save the new recurrence.
+          NSMutableDictionary * detailedRecurrence = [self createDetailedRecDictionary:newCalOptions];
+          EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
                                                                               interval: intervalAmount.integerValue
-                                                                                   end: nil];*/
-        NSString* recurrenceEndTime = [newCalOptions objectForKey:@"recurrenceEndTime"];
-        if (recurrenceEndTime != nil) {
-          NSTimeInterval _recurrenceEndTimeInterval = [recurrenceEndTime doubleValue] / 1000; // strip millis
-          NSDate *myRecurrenceEndDate = [NSDate dateWithTimeIntervalSince1970:_recurrenceEndTimeInterval];
-          EKRecurrenceEnd *end = [EKRecurrenceEnd recurrenceEndWithEndDate:myRecurrenceEndDate];
-          rule.recurrenceEnd = end;
+                                                                         daysOfTheWeek: detailedRecurrence[@"daysOfTheWeek"]
+                                                                        daysOfTheMonth: detailedRecurrence[@"daysOfTheMonth"]
+                                                                        monthsOfTheYear:detailedRecurrence[@"monthsOfTheYear"]
+                                                                        weeksOfTheYear:detailedRecurrence[@"weeksOfTheYear"]
+                                                                        daysOfTheYear:nil
+                                                                          setPositions:detailedRecurrence[@"setPositions"]
+                                                                                   end: nil];
+          /*EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
+                                                                                interval: intervalAmount.integerValue
+                                                                                     end: nil];*/
+          NSString* recurrenceEndTime = [newCalOptions objectForKey:@"recurrenceEndTime"];
+          if (recurrenceEndTime != nil) {
+            NSTimeInterval _recurrenceEndTimeInterval = [recurrenceEndTime doubleValue] / 1000; // strip millis
+            NSDate *myRecurrenceEndDate = [NSDate dateWithTimeIntervalSince1970:_recurrenceEndTimeInterval];
+            EKRecurrenceEnd *end = [EKRecurrenceEnd recurrenceEndWithEndDate:myRecurrenceEndDate];
+            rule.recurrenceEnd = end;
+          }
+          [theEvent addRecurrenceRule:rule];
         }
-        [theEvent addRecurrenceRule:rule];
       }
       NSString* url = [newCalOptions objectForKey:@"url"];
       if (url != (id)[NSNull null]) {
@@ -300,7 +317,9 @@
           [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }
 
-        if(repeatEndDatePreviousEvent){// There was a previous event that had a different recurrence.
+        if(repeatEndDatePreviousEvent && intervalAmount!=nil){
+        // There was a previous event that had a different recurrence (if the intervalAmount is nil,
+        // the previous event was already saved and dealt with).
           EKEvent *pastEvent = [self.eventStore eventWithIdentifier:calEventID];
           for (EKAlarm *alarm in pastAlarms) {
             // Have to create new alarms to get this work.
@@ -343,7 +362,6 @@
   }];
 
 }
-
 
 - (void) deleteEventFromCalendar:(CDVInvokedUrlCommand*)command
                        calendar: (EKCalendar *) calendar {
@@ -644,7 +662,7 @@
       }
       [entry setObject:detached forKey:@"isDetached"];
     }
-    [entry setObject:event.calendarItemIdentifier forKey:@"id"];
+    [entry setObject:event.eventIdentifier forKey:@"id"];
     [results addObject:entry];
   }
   return results;
