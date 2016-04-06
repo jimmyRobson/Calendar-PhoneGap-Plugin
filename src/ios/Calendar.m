@@ -175,7 +175,7 @@
         /*NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
         [formatter setDateFormat:@"YYYY-MM-dd"];
         NSLog(@"start date find %@", [formatter stringFromDate:repeatEndDatePreviousEvent]);*/
-        if(repeatEndDatePreviousEvent!=nil && intervalAmount==nil){
+        if(repeatEndDatePreviousEvent!=nil && (intervalAmount==nil|| intervalAmount.integerValue<1)){
           
           for (EKRecurrenceRule *rule in originalEvent.recurrenceRules) {
             // Have to create new recurrences to get this work.
@@ -276,7 +276,7 @@
           [pastRecurrenceRules addObject:rule];
           [theEvent removeRecurrenceRule:rule];
         }
-        if(intervalAmount != nil){ // There must be an interval amount to save the new recurrence.
+        if(intervalAmount != nil && intervalAmount.integerValue >0){ // There must be an interval amount to save the new recurrence.
           NSMutableDictionary * detailedRecurrence = [self createDetailedRecDictionary:newCalOptions];
           EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
                                                                               interval: intervalAmount.integerValue
@@ -317,7 +317,7 @@
           [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }
 
-        if(repeatEndDatePreviousEvent && intervalAmount!=nil){
+        if(repeatEndDatePreviousEvent && (intervalAmount!=nil && intervalAmount.integerValue>0)){
         // There was a previous event that had a different recurrence (if the intervalAmount is nil,
         // the previous event was already saved and dealt with).
           EKEvent *pastEvent = [self.eventStore eventWithIdentifier:calEventID];
