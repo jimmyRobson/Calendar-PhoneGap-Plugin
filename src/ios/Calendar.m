@@ -172,11 +172,9 @@
         }
         NSDictionary* newCalOptions = [options objectForKey:@"newOptions"];
         NSNumber* intervalAmount = [newCalOptions objectForKey:@"recurrenceInterval"];
-        /*NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-        [formatter setDateFormat:@"YYYY-MM-dd"];
-        NSLog(@"start date find %@", [formatter stringFromDate:repeatEndDatePreviousEvent]);*/
-        if(repeatEndDatePreviousEvent!=nil && (intervalAmount==nil|| intervalAmount.integerValue<1)){
-          
+        if(repeatEndDatePreviousEvent!=nil && (intervalAmount==nil|| intervalAmount.integerValue<1) &&
+          (spanFuture==1)){// There is a prior repeating event, this instance has been changed to have no
+          // recurrence and this is a future spanning event.
           for (EKRecurrenceRule *rule in originalEvent.recurrenceRules) {
             // Have to create new recurrences to get this work.
             EKRecurrenceEnd *end = [EKRecurrenceEnd recurrenceEndWithEndDate:repeatEndDatePreviousEvent];
@@ -186,34 +184,15 @@
           [self.eventStore saveEvent:originalEvent span:EKSpanFutureEvents error:&error];
           theEvent = [EKEvent eventWithEventStore: self.eventStore];
         }
-        //EKEvent *lastEvent = [pastMatchingEvents lastObject];
-        //NSDate* lastReccuranceEnd = lastEvent.startDate;
-        //NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-        /*[formatter setDateFormat:@"YYYY-MM-dd"];
-        for (EKEvent *event in pastToCurrentMatchingEvents) {
-          NSLog(@"start date %@", [formatter stringFromDate:event.startDate]);
-        }*/
-        // Just grab last event for now
-        else{
+        else{ // Just grab last event for now
           theEvent = [pastToCurrentMatchingEvents lastObject];
         }
-         //NSLog(@"start date %@", [formatter stringFromDate:repeatEndDatePreviousEvent]);
       }
     if (theEvent == nil) {
       NSArray *matchingEvents = [self findEKEventsWithTitle:title location:location notes:notes startDate:myStartDate endDate:myEndDate calendars:calendars];
       // Just grab last event for now
       theEvent = [matchingEvents lastObject];
-      //NSLog(@"My number is %i", matchingEvents.count);
-      /*if (matchingEvents.count == 1) {
-
-        // Presume we have to have an exact match to modify it!
-        // Need to load this event from an EKEventStore so we can edit it
-        theEvent = [self.eventStore eventWithIdentifier:((EKEvent*)[matchingEvents lastObject]).eventIdentifier];
-      }*/
     }
-    /*NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-    [formatter setDateFormat:@"YYYY-MM-dd"];
-    NSLog(@"start date %@", [formatter stringFromDate:theEvent.startDate]);*/
     CDVPluginResult *pluginResult = nil;
     if (theEvent != nil) {
       NSDictionary* newCalOptions = [options objectForKey:@"newOptions"];
@@ -230,12 +209,10 @@
       if (ntitle) {
         theEvent.title = ntitle;
       }
-      //NSLog(@"location: %@", nlocation);
       if (nlocation) {
         theEvent.location = nlocation;
       }
       if (nnotes) {
-        //NSLog(@"notes: %@", nnotes);
         theEvent.notes = nnotes;
       }
       if (nstartTime) {
@@ -287,9 +264,6 @@
                                                                         daysOfTheYear:nil
                                                                           setPositions:detailedRecurrence[@"setPositions"]
                                                                                    end: nil];
-          /*EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
-                                                                                interval: intervalAmount.integerValue
-                                                                                     end: nil];*/
           NSString* recurrenceEndTime = [newCalOptions objectForKey:@"recurrenceEndTime"];
           if (recurrenceEndTime != nil) {
             NSTimeInterval _recurrenceEndTimeInterval = [recurrenceEndTime doubleValue] / 1000; // strip millis
@@ -345,13 +319,10 @@
       }else{
         [self.eventStore saveEvent:theEvent span:EKSpanThisEvent error:&error];
       }
-      
-
       // Check error code + return result
       if (error) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.userInfo.description];
       } else {
-        //NSLog(@" error => %@ ", [command callbackId] );
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:theEvent.calendarItemIdentifier];
       }
     } else {
@@ -362,7 +333,6 @@
   }];
 
 }
-
 - (void) deleteEventFromCalendar:(CDVInvokedUrlCommand*)command
                        calendar: (EKCalendar *) calendar {
 
