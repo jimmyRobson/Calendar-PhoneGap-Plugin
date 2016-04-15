@@ -794,7 +794,7 @@
       [myEvent addAlarm:reminder];
     }
 
-    if (recurrence != (id)[NSNull null]) {
+    if (recurrence != (id)[NSNull null] && recurrenceIntervalAmount.integerValue>0) {
       NSMutableDictionary * detailedRecurrence = [self createDetailedRecDictionary:calOptions];
       
       EKRecurrenceRule *rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency: [self toEKRecurrenceFrequency:recurrence]
