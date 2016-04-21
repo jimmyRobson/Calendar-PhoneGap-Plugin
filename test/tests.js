@@ -9,6 +9,7 @@ exports.defineAutoTests = function() {
     expect(true).toBe(true);
     done();
   };
+  console.log('vomeesdf sd');
 
   describe('Plugin availability', function () {
     it("window.plugins.calendar should exist", function() {
@@ -682,17 +683,174 @@ exports.defineAutoTests = function() {
       findEventCheckValues(items[i], i);
     }
   });
+  describe('deleteEventFromNamedCalendarWithID', function () {
+     var items =[{
+              testWith:"With a repeating event, a middle event deleted with spanFuture==false",
+              testShould:"Should delete middle instance and leave other instances unchanged.",
+              calendarName:  'MyCreatedCalendar',
+              title: 'My nice event',
+              eventLocation: 'Home',
+              notes: 'Some notes about this event.',
+              startDate: new Date('December 17, 2016 03:24:00'),
+              endDate: new Date('December 17, 2016 04:24:00'),
+              firstReminderMinutes: 120,
+              secondReminderMinutes: 5,
+              recurrence: 'daily',
+              recurrenceInterval: 2,
+              recurrenceEndDate: new Date('December 21, 2016 04:24:00'),
+              // This is the instance the user clicks on to edit.
+              startDateInstance:new Date('December 19, 2016 03:24:00'),
+              endDateInstance: new Date('December 19, 2016 04:24:00'),
+              spanFuture: false,
+              output:[
+                      {location:"Home",
+                      alarms:{firstReminderMinutes:-5,secondReminderMinutes:-120},
+                      endDate:"2016-12-17 04:24:00",
+                      "startDate":"2016-12-17 03:24:00",
+                      "recurrences":[{"endDate":"2016-12-21 04:24:00","interval":2,"frequency":"daily"}],
+                      "title":"My nice event",
+                      "message":"Some notes about this event.",
+                      "calendar":"MyCreatedCalendar"},
+                      {"location":"Home",
+                      "alarms":{"firstReminderMinutes":-5,"secondReminderMinutes":-120},
+                      "endDate":"2016-12-21 04:24:00",
+                      "startDate":"2016-12-21 03:24:00",
+                      "recurrences":[{"endDate":"2016-12-21 04:24:00","interval":2,"frequency":"daily"}],
+                      "title":"My nice event"
+                      ,"message":"Some notes about this event.",
+                      "calendar":"MyCreatedCalendar"}
+                      ]
+              },
+              {
+              testWith:"With a repeating event, a middle event deleted with spanFuture==true",
+              testShould:"Should delete all future events and leave previous instances unchanged.",
+              calendarName:  'MyCreatedCalendar',
+              title: 'My nice event',
+              eventLocation: 'Home',
+              notes: 'Some notes about this event.',
+              startDate: new Date('December 17, 2016 03:24:00'),
+              endDate: new Date('December 17, 2016 04:24:00'),
+              firstReminderMinutes: 120,
+              secondReminderMinutes: 5,
+              recurrence: 'daily',
+              recurrenceInterval: 2,
+              recurrenceEndDate: new Date('December 21, 2016 04:24:00'),
+              // This is the instance the user clicks on to edit.
+              startDateInstance:new Date('December 19, 2016 03:24:00'),
+              endDateInstance: new Date('December 19, 2016 04:24:00'),
+              spanFuture: true,
+              output:[
+                      {location:"Home",alarms:{"firstReminderMinutes":-5,"secondReminderMinutes":-120},
+                      endDate:"2016-12-17 04:24:00",
+                      startDate:"2016-12-17 03:24:00",
+                      recurrences:[{endDate:"2016-12-17 03:24:00",interval:2,
+                      frequency:"daily"}],
+                      title:"My nice event",
+                      message:"Some notes about this event.",
+                      calendar:"MyCreatedCalendar"}
+                      ]
+              },
+              {
+              testWith:"With a repeating event, the initial event deleted with spanFuture==true",
+              testShould:"Should delete all events.",
+              calendarName:  'MyCreatedCalendar',
+              title: 'My nice event',
+              eventLocation: 'Home',
+              notes: 'Some notes about this event.',
+              startDate: new Date('December 17, 2016 03:24:00'),
+              endDate: new Date('December 17, 2016 04:24:00'),
+              firstReminderMinutes: 120,
+              secondReminderMinutes: 5,
+              recurrence: 'yearly',
+              recurrenceInterval: 1,
+              recurrenceEndDate: new Date('December 21, 2020 04:24:00'),
+              // This is the instance the user clicks on to edit.
+              startDateInstance:new Date('December 17, 2016 03:24:00'),
+              endDateInstance: new Date('December 17, 2016 04:24:00'),
+              spanFuture: true,
+              output:[]
+              },
+      ];
+      function findEventCheckValues (item, itemIndex){
+        describe(item.testWith, function(){
+        var success = function(message) { console.log("Success: " + JSON.stringify(message)); },
+        error = function(message) { 
+          console.log("Error: " + message);
+        },
 
-  /*
-  TODO extend - this is a copy-paste example of Toast
-  describe('Invalid usage', function () {
-    it("should fail due to an invalid position", function(done) {
-     window.plugins.toast.show('hi', 'short', 'nowhere', fail.bind(null, done), succeed.bind(null, done));
-    });
+        calOptions = window.plugins.calendar.getCalendarOptions(); 
+        calOptions.firstReminderMinutes = item.firstReminderMinutes;
+        calOptions.secondReminderMinutes = item.secondReminderMinutes;
+        if(item.recurrence){
+          calOptions.recurrence = item.recurrence;
+          calOptions.recurrenceInterval = item.recurrenceInterval; 
+          calOptions.recurrenceEndDate = item.recurrenceEndDate;
+          calOptions.daysOfTheWeek = item.daysOfTheWeek;
+          calOptions.daysOfTheMonth = item.daysOfTheMonth;
+          calOptions.monthsOfTheYear = item.monthsOfTheYear;
+          calOptions.setPositions = item.setPositions;
+        }
+        calOptions.calendarName = item.calendarName;
 
-    it("should fail due to an invalid duration", function(done) {
-     window.plugins.toast.show('hi', 'medium', 'top', fail.bind(null, done), succeed.bind(null, done));
-    });
+        beforeEach(function(done) {
+          var success = function(result) { 
+              //console.log(result);
+              calOptions.id = result;
+              done();
+          },
+          successList = function(result){
+            var foundCal = false;
+            for(var i = 0; i<result.length;i++){
+              if (result[i].name === item.calendarName){
+                foundCal = true;
+              }
+            }
+            if(foundCal){
+              window.plugins.calendar.deleteCalendar(item.calendarName,deleteFinish,error);
+            }else{
+              window.plugins.calendar.createEventWithOptions(item.title,item.eventLocation,
+                item.notes,item.startDate,item.endDate,calOptions,success,error);
+            }
+          },
+          deleteFinish = function(result){
+            window.plugins.calendar.createEventWithOptions(item.title,item.eventLocation,
+                item.notes,item.startDate,item.endDate,calOptions,success,error);
+          };
+          window.plugins.calendar.listCalendars(successList,error);
+        });
+        it(item.testShould+" for input "+itemIndex.toString(), function(done) {
+
+          var success = function(result) { 
+            window.plugins.calendar.findAllEventsInNamedCalendarForTests(item.calendarName,
+                  successFind,error);
+          };
+          var successFind = function(result){
+            for(var i =0; i<result.length;i++){
+              
+              delete result[i].id;
+            }
+            expect(item.output).toEqual(result);
+            console.log(result);
+            done();
+            
+
+          };
+
+          window.plugins.calendar.deleteEventFromNamedCalendarWithID(item.title, item.eventLocation, item.notes, 
+            item.startDateInstance, item.endDateInstance, 
+            item.calendarName, calOptions.id,
+            item.spanFuture , success, error);
+        });
+
+      });
+    }//end function
+    //findEventCheckValues(items[1], 1)
+    for(var i=0; i<items.length;i++){
+      findEventCheckValues(items[i], i);
+    }
+    
   });
-  */
+    
+
+ 
 };

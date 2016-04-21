@@ -816,7 +816,7 @@
     }
 
     NSError *error = nil;
-    [self.eventStore saveEvent:myEvent span:EKSpanThisEvent error:&error];
+    [self.eventStore saveEvent:myEvent span:EKSpanThisEvent commit:YES error:&error];
 
     if (error) {
       pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.userInfo.description];
@@ -931,6 +931,51 @@
     controller.eventStore = self.eventStore;
     controller.editViewDelegate = self;
     [self.viewController presentViewController:controller animated:YES completion:nil];
+  }];
+}
+
+- (void) deleteEventFromNamedCalendarWithID:(CDVInvokedUrlCommand*)command {
+  // This is similar to deleteEventFromNamedCalendar, but an id is used to 
+  // to find the event & there is the option to delete future events.
+  NSDictionary* options = [command.arguments objectAtIndex:0];
+  NSString* calendarName = [options objectForKey:@"calendarName"];
+  EKCalendar* calendar = [self findEKCalendar:calendarName];
+  NSString* title      = [options objectForKey:@"title"];
+  NSString* location   = [options objectForKey:@"location"];
+  NSString* notes      = [options objectForKey:@"notes"];
+  NSNumber* startTime  = [options objectForKey:@"startTime"];
+  NSNumber* endTime    = [options objectForKey:@"endTime"];
+  NSString* eventId    = [options objectForKey:@"id"];
+  BOOL spanFuture = [[options objectForKey:@"spanFuture"] boolValue];
+  // For some reason we need to reconnect to the event store.
+  self.eventStore = [[EKEventStore alloc] init];
+
+
+  NSTimeInterval _startInterval = [startTime doubleValue] / 1000; // strip millis
+  NSDate *myStartDate = [NSDate dateWithTimeIntervalSince1970:_startInterval];
+  NSTimeInterval _endInterval = [endTime doubleValue] / 1000; // strip millis
+  NSDate *myEndDate = [NSDate dateWithTimeIntervalSince1970:_endInterval];
+  [self.commandDelegate runInBackground: ^{
+    CDVPluginResult *pluginResult =nil;
+    if (calendar == nil) {
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Could not find calendar"];
+    } else {
+      NSArray *calendars = [NSArray arrayWithObject:calendar];
+      NSArray *matchingEventsWithID = [self findEKEventsWithEventId:eventId title:title location:location notes:notes startDate:myStartDate endDate:myEndDate calendars:calendars];
+      EKEvent *event = [matchingEventsWithID lastObject]; // There should be only one.
+      NSError *error = NULL;
+      if(spanFuture==1){
+        [self.eventStore removeEvent:event span:EKSpanFutureEvents commit:YES error:&error];
+      }else{
+        [self.eventStore removeEvent:event span:EKSpanThisEvent commit:YES error:&error];
+      }
+      if (error) {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error];
+      } else {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:event.eventIdentifier];
+      }
+    }
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
   }];
 }
 

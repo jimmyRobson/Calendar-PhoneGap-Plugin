@@ -18,7 +18,7 @@
                        calendars: (NSArray *)calendars;
 
 -(NSArray*)findEKEventsWithEventId: (NSString *)eventId
-						   title: (NSString *)title
+                           title: (NSString *)title
                         location: (NSString *)location
                            notes: (NSString *)notes
                        startDate: (NSDate *)startDate
@@ -49,6 +49,7 @@
 - (void)listCalendars:(CDVInvokedUrlCommand*)command;
 - (void)deleteEvent:(CDVInvokedUrlCommand*)command;
 - (void)deleteEventFromNamedCalendar:(CDVInvokedUrlCommand*)command;
+- (void)deleteEventFromNamedCalendarWithID:(CDVInvokedUrlCommand*)command;
 - (void)deleteEventFromCalendar:(CDVInvokedUrlCommand*)command calendar:(EKCalendar*)calendar;
 - (void)eventEditViewController:(EKEventEditViewController*)controller didCompleteWithAction:(EKEventEditViewAction) action;
 
