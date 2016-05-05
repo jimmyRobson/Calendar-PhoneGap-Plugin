@@ -9,7 +9,7 @@ exports.defineAutoTests = function() {
     expect(true).toBe(true);
     done();
   };
-  console.log('vomeesdf sd');
+  console.log('gloping doop in');
 
   describe('Plugin availability', function () {
     it("window.plugins.calendar should exist", function() {
@@ -47,8 +47,8 @@ exports.defineAutoTests = function() {
               startDateInstance:new Date('December 19, 2016 03:24:00'),
               endDateInstance: new Date('December 19, 2016 04:24:00'),
               editedItem:{eventLocation:"Home",
-                  firstReminderMinutes:5,
-                  secondReminderMinutes:120,
+                  firstReminderMinutes:30,
+                  secondReminderMinutes:null,
                   startDate:new Date('December 19, 2016 03:24:00'),
                   endDate:new Date('December 19, 2016 04:24:00'),
                   recurrence:null,
@@ -61,16 +61,18 @@ exports.defineAutoTests = function() {
                   spanFuture: false
                   },
               output:[{location:'Home',
-                      alarms:{firstReminderMinutes:-5,secondReminderMinutes:-120},
+                      alarms:{firstReminderMinutes:-30},
                       endDate:'2016-12-19 04:24:00',startDate:'2016-12-19 03:24:00',
                       recurrences:[],title:'oh wow',message:'Some notes about this event.',calendar:'MyCreatedCalendar',isDetached:true},
                       {location:'Home',
+                      alarms:{"firstReminderMinutes":-5,"secondReminderMinutes":-120},
                       endDate:'2016-12-17 04:24:00',startDate:'2016-12-17 03:24:00',
                       recurrences:[{endDate:'2016-12-21 04:24:00',interval:2,frequency:'daily'}],
                       title:'My nice event',
                       message:'Some notes about this event.',
                       calendar:'MyCreatedCalendar'},
                       {location:'Home',
+                      alarms:{"firstReminderMinutes":-5,"secondReminderMinutes":-120},
                       endDate:'2016-12-21 04:24:00',startDate:'2016-12-21 03:24:00',
                       recurrences:[{endDate:'2016-12-21 04:24:00',interval:2,frequency:'daily'}],
                       title:'My nice event',
