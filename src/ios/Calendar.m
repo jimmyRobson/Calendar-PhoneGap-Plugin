@@ -568,18 +568,17 @@
                                           nil,@"secondReminderMinutes"
                                           nil];*/
       NSMutableDictionary *alarmEntry = [[NSMutableDictionary alloc] init];
-
-      for (EKAlarm * alarm in event.alarms) {
-        /*NSMutableDictionary *alarmEntry = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
-                                          @(alarm.relativeOffset), @"reminderMinutes",
-                                          nil];*/
-          if(index==0){
-            [alarmEntry setObject:@(alarm.relativeOffset/60) forKey:@"firstReminderMinutes"];
-          }
-          else if(index==1){
-            [alarmEntry setObject:@(alarm.relativeOffset/60) forKey:@"secondReminderMinutes"];
-          }
-        index++;
+      if([event.alarms count] > 1){
+        if(event.alarms[0].relativeOffset < event.alarms[1].relativeOffset){
+          [alarmEntry setObject:@(event.alarms[1].relativeOffset/60) forKey:@"firstReminderMinutes"];
+          [alarmEntry setObject:@(event.alarms[0].relativeOffset/60) forKey:@"secondReminderMinutes"];
+        }else{
+          [alarmEntry setObject:@(event.alarms[0].relativeOffset/60) forKey:@"firstReminderMinutes"];
+          [alarmEntry setObject:@(event.alarms[1].relativeOffset/60) forKey:@"secondReminderMinutes"];
+        }
+      }
+      else if([event.alarms count] == 1){
+          [alarmEntry setObject:@(event.alarms[0].relativeOffset/60) forKey:@"firstReminderMinutes"];
       }
       [entry setObject:alarmEntry forKey:@"alarms"];
     }
@@ -741,12 +740,10 @@
       }
     }
     myEvent.calendar = calendar;
-
     if (firstReminderMinutes != (id)[NSNull null]) {
       EKAlarm *reminder = [EKAlarm alarmWithRelativeOffset:-1*firstReminderMinutes.intValue*60];
       [myEvent addAlarm:reminder];
     }
-
     if (secondReminderMinutes != (id)[NSNull null]) {
       EKAlarm *reminder = [EKAlarm alarmWithRelativeOffset:-1*secondReminderMinutes.intValue*60];
       [myEvent addAlarm:reminder];

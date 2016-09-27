@@ -9,7 +9,7 @@ exports.defineAutoTests = function() {
     expect(true).toBe(true);
     done();
   };
-  console.log('gloping doop in');
+  console.log('gloping doop  ddd in');
 
   describe('Plugin availability', function () {
     it("window.plugins.calendar should exist", function() {
@@ -38,8 +38,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('December 17, 2016 03:24:00'),
               endDate: new Date('December 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'daily',
               recurrenceInterval: 2,
               recurrenceEndDate: new Date('December 21, 2016 04:24:00'),
@@ -51,7 +51,7 @@ exports.defineAutoTests = function() {
                   secondReminderMinutes:null,
                   startDate:new Date('December 19, 2016 03:24:00'),
                   endDate:new Date('December 19, 2016 04:24:00'),
-                  recurrence:null,
+                  //recurrence:null,
                   title:'oh wow',
                   notes: 'Some notes about this event.',
                   calendarName:'MyCreatedCalendar',
@@ -86,8 +86,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('March 17, 2016 03:24:00'),
               endDate: new Date('March 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'daily',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('March 23, 2016 04:24:00'),
@@ -153,8 +153,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('March 17, 2016 03:24:00'),
               endDate: new Date('March 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'daily',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('March 23, 2016 04:24:00'),
@@ -215,8 +215,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('March 17, 2016 03:24:00'),
               endDate: new Date('March 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'daily',
               recurrenceInterval: 2,
               recurrenceEndDate: new Date('March 21, 2016 04:24:00'),
@@ -263,8 +263,8 @@ exports.defineAutoTests = function() {
                   notes: 'Some notes about this event.',
                   startDate: new Date('March 11, 2016 03:24:00'),
                   endDate: new Date('March 11, 2016 04:24:00'),
-                  firstReminderMinutes: 120,
-                  secondReminderMinutes: 5,
+                  firstReminderMinutes: 5,
+                  secondReminderMinutes: 120,
                   /*recurrence: 'daily',
                   recurrenceInterval: 2,
                   recurrenceEndDate: new Date('March 21, 2016 04:24:00'),*/
@@ -305,8 +305,8 @@ exports.defineAutoTests = function() {
                   notes: 'Some notes about this event.',
                   startDate: new Date('February 1, 2016 03:24:00'),
                   endDate: new Date('February 1, 2016 04:24:00'),
-                  firstReminderMinutes: 120,
-                  secondReminderMinutes: 5,
+                  firstReminderMinutes: 5,
+                  secondReminderMinutes: 120,
                   recurrence: 'monthly',
                   recurrenceInterval: 1,
                   recurrenceEndDate: new Date('April 1, 2016 04:24:00'),
@@ -338,8 +338,8 @@ exports.defineAutoTests = function() {
                   notes: 'Some notes about this event.',
                   startDate: new Date('February 1, 2016 03:24:00'),
                   endDate: new Date('February 1, 2016 04:24:00'),
-                  firstReminderMinutes: 120,
-                  secondReminderMinutes: 5,
+                  firstReminderMinutes: 5,
+                  secondReminderMinutes: 120,
                   recurrence: 'monthly',
                   recurrenceInterval: 1,
                   daysOfTheWeek:[6],
@@ -422,10 +422,17 @@ exports.defineAutoTests = function() {
           };
           var successFind = function(result){
             for(var i =0; i<result.length;i++){
-              
+              delete result[i].lastModifiedDate;
               delete result[i].id;
             }
-            expect(item.output).toEqual(result);
+            for(var i=0; i<item.output.length;i++){
+              expect(item.output.length).toEqual(result.length);
+              for (var key in item.output[i]) {
+                  expect(result[i][key]).toEqual(item.output[i][key]);
+              }
+            }
+            //expect(item.output).toEqual(result);
+            // console.log(item.output);
             console.log(result);
             done();
             
@@ -451,7 +458,8 @@ exports.defineAutoTests = function() {
 
       });
     }//end function
-    //findEventCheckValues(items[1], 1)
+    
+    //findEventCheckValues(items[0], 0)
     for(var i=0; i<items.length;i++){
       findEventCheckValues(items[i], i);
     }
@@ -468,8 +476,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('February 17, 2016 03:24:00'),
               endDate: new Date('February 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'weekly',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('March 1, 2016 04:24:00'),
@@ -518,8 +526,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('February 1, 2016 03:24:00'),
               endDate: new Date('February 1, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'monthly',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('March 1, 2016 04:24:00'),
@@ -556,8 +564,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('February 1, 2016 03:24:00'),
               endDate: new Date('February 1, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'yearly',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('February 1, 2017 04:24:00'),
@@ -572,8 +580,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('February 1, 2016 03:24:00'),
               endDate: new Date('February 1, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'monthly',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('April 1, 2016 04:24:00'),
@@ -589,8 +597,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('February 1, 2016 03:24:00'),
               endDate: new Date('February 1, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'yearly',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('March 1, 2017 04:24:00'),
@@ -608,8 +616,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('February 1, 2016 03:24:00'),
               endDate: new Date('February 1, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'monthly',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('April 1, 2016 04:24:00'),
@@ -670,8 +678,16 @@ exports.defineAutoTests = function() {
             for(var i =0; i<result.length;i++){
               
               delete result[i].id;
+              delete result[i].lastModifiedDate;
             }
-            expect(item.output).toEqual(result);
+            for(var i=0; i<item.output.length;i++){
+              expect(item.output.length).toEqual(result.length);
+              for (var key in item.output[i]) {
+                  expect(result[i][key]).toEqual(item.output[i][key]);
+              }
+            }
+            //expect(item.output).toEqual(result);
+            // console.log(item.output);
             console.log(result);
             done();
           };
@@ -680,7 +696,7 @@ exports.defineAutoTests = function() {
         });
       });
     }//end function
-    //findEventCheckValues(items[2], 2)
+    //findEventCheckValues(items[0], 0)
     for(var i=0; i<items.length;i++){
       findEventCheckValues(items[i], i);
     }
@@ -695,8 +711,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('December 17, 2016 03:24:00'),
               endDate: new Date('December 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'daily',
               recurrenceInterval: 2,
               recurrenceEndDate: new Date('December 21, 2016 04:24:00'),
@@ -732,8 +748,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('December 17, 2016 03:24:00'),
               endDate: new Date('December 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'daily',
               recurrenceInterval: 2,
               recurrenceEndDate: new Date('December 21, 2016 04:24:00'),
@@ -761,8 +777,8 @@ exports.defineAutoTests = function() {
               notes: 'Some notes about this event.',
               startDate: new Date('December 17, 2016 03:24:00'),
               endDate: new Date('December 17, 2016 04:24:00'),
-              firstReminderMinutes: 120,
-              secondReminderMinutes: 5,
+              firstReminderMinutes: 5,
+              secondReminderMinutes: 120,
               recurrence: 'yearly',
               recurrenceInterval: 1,
               recurrenceEndDate: new Date('December 21, 2020 04:24:00'),
@@ -830,8 +846,17 @@ exports.defineAutoTests = function() {
             for(var i =0; i<result.length;i++){
               
               delete result[i].id;
+              delete result[i].lastModifiedDate;
             }
-            expect(item.output).toEqual(result);
+            expect(item.output.length).toEqual(result.length);
+            for(var i=0; i<item.output.length;i++){
+              expect(item.output.length).toEqual(result.length);
+              for (var key in item.output[i]) {
+                  expect(result[i][key]).toEqual(item.output[i][key]);
+              }
+            }
+            //expect(item.output).toEqual(result);
+            // console.log(item.output);
             console.log(result);
             done();
             
@@ -853,6 +878,4 @@ exports.defineAutoTests = function() {
     
   });
     
-
- 
 };
