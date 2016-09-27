@@ -1,4 +1,4 @@
-# PhoneGap Calendar plugin 
+# PhoneGap Calendar plugin
 
 for iOS and Android, by [Eddy Verbruggen](http://www.x-services.nl)
 
@@ -20,8 +20,9 @@ Of course I'm happy to receive any amount but I'm just as happy if you simply 's
 	2. [Manually](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#manually)
 	2. [PhoneGap Build](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#phonegap-build)
 3. [Usage](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#3-usage)
-4. [Credits](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#4-credits)
-5. [License](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#5-license)
+4. [Promises](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#4-promises)
+5. [Credits](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#5-credits)
+6. [License](https://github.com/EddyVerbruggen/Calendar-PhoneGap-Plugin#6-license)
 
 ## 1. Description
 
@@ -35,7 +36,12 @@ This plugin allows you to add events to the Calendar of the mobile device.
 ### iOS specifics
 * Supported methods: `find`, `create`, `modify`, `delete`, ..
 * All methods work without showing the native calendar. Your app never loses control.
-* Tested on iOS 6 and 7.
+* Tested on iOS 6+.
+* On iOS 10+ you need to provide a reason to the user for Calendar access. This plugin adds an empty `NSCalendarsUsageDescription` key to the /platforms/ios/*-Info.plist file which you can override with your custom string. To do so, pass the following variable when installing the plugin:
+
+```
+cordova plugin add cordova-plugin-calendar --variable CALENDAR_USAGE_DESCRIPTION="This app uses your calendar"
+```
 
 ### Android specifics
 * Supported methods on Android 4: `find`, `create` (silent and interactive), `delete`, ..
@@ -125,8 +131,8 @@ The table gives an overview of basic operation compatibility:
 
 Operation                           | Comment     | iOS | Android
 ----------------------------------- | ----------- | --- | -------
-createCalendar                      |             | yes | 
-deleteCalendar                      |             | yes | 
+createCalendar                      |             | yes | yes
+deleteCalendar                      |             | yes | yes
 createEvent                         | silent      | yes | yes (on Android < 4 dialog is shown)
 createEventWithOptions              | silent      | yes | yes (on Android < 4 dialog is shown)
 createEventInteractively            | interactive | yes | yes
@@ -135,16 +141,15 @@ findEvent                           |             | yes | yes
 findEventWithOptions                |             | yes | yes
 listEventsInRange                   |             |     | yes
 listCalendars                       |             | yes | yes
-findAllEventsInNamedCalendars       |             | yes | 
-modifyEvent                         |             | yes | 
-modifyEventWithOptions              |             | yes | 
+findAllEventsInNamedCalendars       |             | yes |
+modifyEvent                         |             | yes |
+modifyEventWithOptions              |             | yes |
 deleteEvent                         |             | yes | yes
-deleteEventFromNamedCalendar        |             | yes | 
+deleteEventFromNamedCalendar        |             | yes |
 openCalendar                        |             | yes | yes
 
 Basic operations, you'll want to copy-paste this for testing purposes:
-
-```javascript
+```js
   // prep some variables
   var startDate = new Date(2015,2,15,18,30,0,0,0); // beware: month 0 = january, 11 = december
   var endDate = new Date(2015,2,15,19,30,0,0,0);
@@ -162,12 +167,12 @@ Basic operations, you'll want to copy-paste this for testing purposes:
   createCalOptions.calendarColor = "#FF0000"; // an optional hex color (with the # char), default is null, so the OS picks a color
   window.plugins.calendar.createCalendar(createCalOptions,success,error);
 
-  // delete a calendar (iOS only for now)
+  // delete a calendar
   window.plugins.calendar.deleteCalendar(calendarName,success,error);
 
   // create an event silently (on Android < 4 an interactive dialog is shown)
   window.plugins.calendar.createEvent(title,eventLocation,notes,startDate,endDate,success,error);
-  
+
   // create an event silently (on Android < 4 an interactive dialog is shown which doesn't use this options) with options:
   var calOptions = window.plugins.calendar.getCalendarOptions(); // grab the defaults
   calOptions.firstReminderMinutes = 120; // default is 60, pass in null for no reminder (alarm)
@@ -246,25 +251,65 @@ Basic operations, you'll want to copy-paste this for testing purposes:
 ```
 
 Creating an all day event:
-
-```javascript
+```js
   // set the startdate to midnight and set the enddate to midnight the next day
   var startDate = new Date(2014,2,15,0,0,0,0,0);
   var endDate = new Date(2014,2,16,0,0,0,0,0);
 ```
 
 Creating an event for 3 full days
-
-```javascript
+```js
   // set the startdate to midnight and set the enddate to midnight 3 days later
   var startDate = new Date(2014,2,24,0,0,0,0,0);
   var endDate = new Date(2014,2,27,0,0,0,0,0);
+```
+
+Example Response IOS getCalendarOptions
+```js
+{
+calendarId: null,
+calendarName: "calendar",
+firstReminderMinutes: 60,
+recurrence: null,
+recurrenceEndDate: null,
+recurrenceInterval: 1,
+secondReminderMinutes: null,
+url: null
+}
+```
+
+Exmaple Response IOS Calendars
+```js
+{
+id: "258B0D99-394C-4189-9250-9488F75B399D",
+name: "standard calendar",
+type: "Local"
+}
+```
+
+Exmaple Response IOS Event
+```js
+{
+calendar: "Kalender",
+endDate: "2016-06-10 23:59:59",
+id: "0F9990EB-05A7-40DB-B082-424A85B59F90",
+lastModifiedDate: "2016-06-13 09:14:02",
+location: "",
+message: "my description",
+startDate: "2016-06-10 00:00:00",
+title: "myEvent"
+}
 ```
 
 ### Android 6 (M) Permissions
 On Android 6 you need to request permission to use the Calendar at runtime when targeting API level 23+.
 Even if the `uses-permission` tags for the Calendar are present in `AndroidManifest.xml`.
 
+Since plugin version 4.5.0 we transparently handle this for you in a just-in-time manner.
+So if you call `createEvent` we will pop up the permission dialog. After the user granted access
+to his calendar the event will be created.
+
+You can also manually manage and check permissions if that's your thing.
 Note that the hasPermission functions will return true when:
 
 - You're running this on iOS, or
@@ -273,6 +318,7 @@ Note that the hasPermission functions will return true when:
 - You've already granted permission.
 
 ```js
+  // again, this is no longer needed with plugin version 4.5.0 and up
   function hasReadWritePermission() {
     window.plugins.calendar.hasReadWritePermission(
       function(result) {
@@ -296,7 +342,13 @@ Note that backward compatibility was added by checking for read or write permiss
 If permission is needed the plugin will now show the permission request popup.
 The user will then need to allow access and invoke the same method again after doing so.
 
-## 4. CREDITS ##
+## 4. Promises
+If you like to use promises instead of callbacks, or struggle to create a lot of
+events asynchronously with this plugin then I encourage you to take a look at
+[this awesome wrapper](https://github.com/poetic-labs/native-calender-api) for
+this plugin. Kudos to [John Rodney](https://github.com/JohnRodney) for this piece of art!
+
+## 5. Credits
 
 This plugin was enhanced for Plugman / PhoneGap Build by [Eddy Verbruggen](http://www.x-services.nl). I fixed some issues in the native code (mainly for iOS) and changed the JS-Native functions a little in order to make a universal JS API for both platforms.
 * Inspired by [this nice blog of Devgirl](http://devgirl.org/2013/07/17/tutorial-how-to-write-a-phonegap-plugin-for-android/).
@@ -304,7 +356,7 @@ This plugin was enhanced for Plugman / PhoneGap Build by [Eddy Verbruggen](http:
 * Credits for the original Android code go to [Ten Forward Consulting](https://github.com/tenforwardconsulting/Phonegap-Calendar-Plugin-android) and [twistandshout](https://github.com/twistandshout/phonegap-calendar-plugin).
 * Special thanks to [four32c.com](http://four32c.com) for sponsoring part of the implementation, while keeping the plugin opensource.
 
-## 5. License
+## 6. License
 
 [The MIT License (MIT)](http://www.opensource.org/licenses/mit-license.html)
 

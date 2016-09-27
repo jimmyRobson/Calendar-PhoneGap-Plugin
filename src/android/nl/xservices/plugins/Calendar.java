@@ -11,14 +11,13 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.CalendarContract;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import nl.xservices.plugins.accessor.AbstractCalendarAccessor;
 import nl.xservices.plugins.accessor.CalendarProviderAccessor;
 import nl.xservices.plugins.accessor.LegacyCalendarAccessor;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.PermissionHelper;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -26,6 +25,9 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.TimeZone;
+import java.text.SimpleDateFormat;
+
+import static android.provider.CalendarContract.Events;
 
 public class Calendar extends CordovaPlugin {
   private static final String HAS_READ_PERMISSION = "hasReadPermission";
@@ -45,17 +47,32 @@ public class Calendar extends CordovaPlugin {
   private static final String ACTION_LIST_EVENTS_IN_RANGE = "listEventsInRange";
   private static final String ACTION_LIST_CALENDARS = "listCalendars";
   private static final String ACTION_CREATE_CALENDAR = "createCalendar";
+  private static final String ACTION_DELETE_CALENDAR = "deleteCalendar";
+
+  // write permissions
+  private static final int PERMISSION_REQCODE_CREATE_CALENDAR = 100;
+  private static final int PERMISSION_REQCODE_DELETE_CALENDAR = 101;
+  private static final int PERMISSION_REQCODE_CREATE_EVENT = 102;
+  private static final int PERMISSION_REQCODE_DELETE_EVENT = 103;
+
+  // read permissions
+  private static final int PERMISSION_REQCODE_FIND_EVENTS = 200;
+  private static final int PERMISSION_REQCODE_LIST_CALENDARS = 201;
+  private static final int PERMISSION_REQCODE_LIST_EVENTS_IN_RANGE = 202;
 
   private static final Integer RESULT_CODE_CREATE = 0;
   private static final Integer RESULT_CODE_OPENCAL = 1;
 
+  private JSONArray requestArgs;
   private CallbackContext callback;
 
   private static final String LOG_TAG = AbstractCalendarAccessor.LOG_TAG;
 
   @Override
   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-    callback = callbackContext;
+    this.callback = callbackContext;
+    this.requestArgs = args;
+
     final boolean hasLimitedSupport = Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 
     if (ACTION_OPEN_CALENDAR.equals(action)) {
@@ -91,6 +108,9 @@ public class Calendar extends CordovaPlugin {
     } else if (!hasLimitedSupport && ACTION_CREATE_CALENDAR.equals(action)) {
       createCalendar(args);
       return true;
+    } else if (!hasLimitedSupport && ACTION_DELETE_CALENDAR.equals(action)) {
+      deleteCalendar(args);
+      return true;
     } else if (HAS_READ_PERMISSION.equals(action)) {
       hasReadPermission();
       return true;
@@ -101,13 +121,13 @@ public class Calendar extends CordovaPlugin {
       hasReadWritePermission();
       return true;
     } else if (REQUEST_READ_PERMISSION.equals(action)) {
-      requestReadPermission();
+      requestReadPermission(0);
       return true;
     } else if (REQUEST_WRITE_PERMISSION.equals(action)) {
-      requestWritePermission();
+      requestWritePermission(0);
       return true;
     } else if (REQUEST_READWRITE_PERMISSION.equals(action)) {
-      requestReadWritePermission();
+      requestReadWritePermission(0);
       return true;
     }
     return false;
@@ -128,16 +148,16 @@ public class Calendar extends CordovaPlugin {
         calendarPermissionGranted(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)));
   }
 
-  private void requestReadPermission() {
-    requestPermission(Manifest.permission.READ_CALENDAR);
+  private void requestReadPermission(int requestCode) {
+    requestPermission(requestCode, Manifest.permission.READ_CALENDAR);
   }
 
-  private void requestWritePermission() {
-    requestPermission(Manifest.permission.WRITE_CALENDAR);
+  private void requestWritePermission(int requestCode) {
+    requestPermission(requestCode, Manifest.permission.WRITE_CALENDAR);
   }
 
-  private void requestReadWritePermission() {
-    requestPermission(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR);
+  private void requestReadWritePermission(int requestCode) {
+    requestPermission(requestCode, Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR);
   }
 
   private boolean calendarPermissionGranted(String... types) {
@@ -145,22 +165,44 @@ public class Calendar extends CordovaPlugin {
       return true;
     }
     for (final String type : types) {
-      if (PackageManager.PERMISSION_GRANTED != ContextCompat.checkSelfPermission(this.cordova.getActivity(), type)) {
+      if (!PermissionHelper.hasPermission(this, type)) {
         return false;
       }
     }
     return true;
   }
 
-  private void requestPermission(String... types) {
+  private void requestPermission(int requestCode, String... types) {
     if (!calendarPermissionGranted(types)) {
-      ActivityCompat.requestPermissions(
-          this.cordova.getActivity(),
-          types,
-          555);
+      PermissionHelper.requestPermissions(this, requestCode, types);
     }
-    // this method executes async and we seem to have no known way to receive the result, so simply returning ok now
-    this.callback.success();
+  }
+
+  public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
+    for (int r : grantResults) {
+      if (r == PackageManager.PERMISSION_DENIED) {
+        Log.d(LOG_TAG, "Permission Denied!");
+        this.callback.error("Please allow access to the Calendar and try again.");
+        return;
+      }
+    }
+
+    // now call the originally requested actions
+    if (requestCode == PERMISSION_REQCODE_CREATE_CALENDAR) {
+      createCalendar(requestArgs);
+    } else if (requestCode == PERMISSION_REQCODE_DELETE_CALENDAR) {
+      deleteCalendar(requestArgs);
+    } else if (requestCode == PERMISSION_REQCODE_CREATE_EVENT) {
+      createEvent(requestArgs);
+    } else if (requestCode == PERMISSION_REQCODE_DELETE_EVENT) {
+      deleteEvent(requestArgs);
+    } else if (requestCode == PERMISSION_REQCODE_FIND_EVENTS) {
+      findEvents(requestArgs);
+    } else if (requestCode == PERMISSION_REQCODE_LIST_CALENDARS) {
+      listCalendars();
+    } else if (requestCode == PERMISSION_REQCODE_LIST_EVENTS_IN_RANGE) {
+      listEventsInRange(requestArgs);
+    }
   }
 
   private void openCalendarLegacy(JSONArray args) {
@@ -212,38 +254,67 @@ public class Calendar extends CordovaPlugin {
     // note that if the dev didn't call requestReadPermission before calling this method and calendarPermissionGranted returns false,
     // the app will ask permission and this method needs to be invoked again (done for backward compat).
     if (!calendarPermissionGranted(Manifest.permission.READ_CALENDAR)) {
-      requestReadPermission();
-      this.callback.error("Please allow Read access to the Calendar and try again.");
+      requestReadPermission(PERMISSION_REQCODE_LIST_CALENDARS);
       return;
     }
     cordova.getThreadPool().execute(new Runnable() {
       @Override
       public void run() {
-        JSONArray jsonObject = new JSONArray();
         try {
-          jsonObject = Calendar.this.getCalendarAccessor().getActiveCalendars();
+          JSONArray activeCalendars = Calendar.this.getCalendarAccessor().getActiveCalendars();
+          if (activeCalendars == null) {
+            activeCalendars = new JSONArray();
+          }
+          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, activeCalendars));
         } catch (JSONException e) {
           System.err.println("Exception: " + e.getMessage());
           callback.error(e.getMessage());
         }
-        PluginResult res = new PluginResult(PluginResult.Status.OK, jsonObject);
-        callback.sendPluginResult(res);
       }
     });
   }
 
-  // note: not quite ready for primetime yet
   private void createCalendar(JSONArray args) {
     if (args.length() == 0) {
       System.err.println("Exception: No Arguments passed");
       return;
     }
 
-    // note that if the dev didn't call requestWritePermission before calling this method and calendarPermissionGranted returns false,
-    // the app will ask permission and this method needs to be invoked again (done for backward compat).
     if (!calendarPermissionGranted(Manifest.permission.WRITE_CALENDAR)) {
-      requestWritePermission();
-      this.callback.error("Please allow Write access to the Calendar and try again.");
+      requestWritePermission(PERMISSION_REQCODE_CREATE_CALENDAR);
+      return;
+    }
+
+    try {
+      final JSONObject jsonFilter = args.getJSONObject(0);
+      final String calendarColor = getPossibleNullString("calendarColor", jsonFilter);
+      final String calendarName = getPossibleNullString("calendarName", jsonFilter);
+      if (calendarName == null) {
+        callback.error("calendarName is mandatory");
+        return;
+      }
+
+      cordova.getThreadPool().execute(new Runnable() {
+        @Override
+        public void run() {
+          String createdId = getCalendarAccessor().createCalendar(calendarName, calendarColor);
+          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, createdId));
+        }
+      });
+    } catch (JSONException e) {
+      System.err.println("Exception: " + e.getMessage());
+      callback.error(e.getMessage());
+    }
+  }
+
+  private void deleteCalendar(JSONArray args) {
+    if (args.length() == 0) {
+      System.err.println("Exception: No Arguments passed");
+      return;
+    }
+
+    if (!calendarPermissionGranted(Manifest.permission.WRITE_CALENDAR)) {
+      requestWritePermission(PERMISSION_REQCODE_DELETE_CALENDAR);
       return;
     }
 
@@ -258,11 +329,8 @@ public class Calendar extends CordovaPlugin {
       cordova.getThreadPool().execute(new Runnable() {
         @Override
         public void run() {
-          getCalendarAccessor().createCalendar(calendarName);
-
-          PluginResult res = new PluginResult(PluginResult.Status.OK, "yes");
-          res.setKeepCallback(true);
-          callback.sendPluginResult(res);
+          getCalendarAccessor().deleteCalendar(calendarName);
+          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, "yes"));
         }
       });
     } catch (JSONException e) {
@@ -279,13 +347,23 @@ public class Calendar extends CordovaPlugin {
       cordova.getThreadPool().execute(new Runnable() {
         @Override
         public void run() {
+          final boolean isAllDayEvent = AbstractCalendarAccessor.isAllDayEvent(new Date(jsonFilter.optLong("startTime")), new Date(jsonFilter.optLong("endTime")));
           final Intent calIntent = new Intent(Intent.ACTION_EDIT)
               .setType("vnd.android.cursor.item/event")
               .putExtra("title", getPossibleNullString("title", jsonFilter))
-              .putExtra("beginTime", jsonFilter.optLong("startTime"))
-              .putExtra("endTime", jsonFilter.optLong("endTime"))
-              .putExtra("hasAlarm", 1)
-              .putExtra("allDay", AbstractCalendarAccessor.isAllDayEvent(new Date(jsonFilter.optLong("startTime")), new Date(jsonFilter.optLong("endTime"))));
+              .putExtra("hasAlarm", 1);
+          if(isAllDayEvent){
+            calIntent
+                .putExtra("allDay", isAllDayEvent)
+                .putExtra("beginTime", jsonFilter.optLong("startTime") + TimeZone.getDefault().getOffset(jsonFilter.optLong("startTime")))
+                .putExtra("endTime", jsonFilter.optLong("endTime") + TimeZone.getDefault().getOffset(jsonFilter.optLong("endTime")))
+                .putExtra("eventTimezone", "TIMEZONE_UTC");
+          } else {
+            calIntent
+                .putExtra("beginTime", jsonFilter.optLong("startTime"))
+                .putExtra("endTime", jsonFilter.optLong("endTime"));
+          }
+
           // TODO can we pass a reminder here?
 
           // optional fields
@@ -306,6 +384,19 @@ public class Calendar extends CordovaPlugin {
           }
           calIntent.putExtra("description", description);
           calIntent.putExtra("calendar_id", argOptionsObject.optInt("calendarId", 1));
+
+          //set recurrence
+          String recurrence = getPossibleNullString("recurrence", argOptionsObject);
+          Long recurrenceEndTime = argOptionsObject.isNull("recurrenceEndTime") ? null : argOptionsObject.optLong("recurrenceEndTime");
+          int recurrenceInterval = argOptionsObject.optInt("recurrenceInterval");
+          if (recurrence != null) {
+            if (recurrenceEndTime == null) {
+              calIntent.putExtra(Events.RRULE, "FREQ=" + recurrence.toUpperCase() + ";INTERVAL=" + recurrenceInterval);
+            } else {
+              final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd'T'hhmmss'Z'");
+              calIntent.putExtra(Events.RRULE, "FREQ=" + recurrence.toUpperCase() + ";INTERVAL=" + recurrenceInterval + ";UNTIL=" + sdf.format(new Date(recurrenceEndTime)));
+            }
+          }
 
           Calendar.this.cordova.startActivityForResult(Calendar.this, calIntent, RESULT_CODE_CREATE);
         }
@@ -341,8 +432,7 @@ public class Calendar extends CordovaPlugin {
     // note that if the dev didn't call requestWritePermission before calling this method and calendarPermissionGranted returns false,
     // the app will ask permission and this method needs to be invoked again (done for backward compat).
     if (!calendarPermissionGranted(Manifest.permission.WRITE_CALENDAR)) {
-      requestWritePermission();
-      this.callback.error("Please allow Write access to the Calendar and try again.");
+      requestWritePermission(PERMISSION_REQCODE_DELETE_EVENT);
       return;
     }
 
@@ -359,9 +449,8 @@ public class Calendar extends CordovaPlugin {
               jsonFilter.optLong("endTime"),
               getPossibleNullString("title", jsonFilter),
               getPossibleNullString("location", jsonFilter));
-          PluginResult res = new PluginResult(PluginResult.Status.OK, deleteResult);
-          res.setKeepCallback(true);
-          callback.sendPluginResult(res);
+
+          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, deleteResult));
         }
       });
     } catch (JSONException e) {
@@ -379,8 +468,7 @@ public class Calendar extends CordovaPlugin {
     // note that if the dev didn't call requestReadPermission before calling this method and calendarPermissionGranted returns false,
     // the app will ask permission and this method needs to be invoked again (done for backward compat).
     if (!calendarPermissionGranted(Manifest.permission.READ_CALENDAR)) {
-      requestReadPermission();
-      this.callback.error("Please allow Read access to the Calendar and try again.");
+      requestReadPermission(PERMISSION_REQCODE_FIND_EVENTS);
       return;
     }
 
@@ -393,12 +481,11 @@ public class Calendar extends CordovaPlugin {
           JSONArray jsonEvents = getCalendarAccessor().findEvents(
               getPossibleNullString("title", jsonFilter),
               getPossibleNullString("location", jsonFilter),
+              getPossibleNullString("notes", jsonFilter),
               jsonFilter.optLong("startTime"),
               jsonFilter.optLong("endTime"));
 
-          PluginResult res = new PluginResult(PluginResult.Status.OK, jsonEvents);
-          res.setKeepCallback(true);
-          callback.sendPluginResult(res);
+          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, jsonEvents));
         }
       });
     } catch (JSONException e) {
@@ -411,8 +498,7 @@ public class Calendar extends CordovaPlugin {
     // note that if the dev didn't call requestWritePermission before calling this method and calendarPermissionGranted returns false,
     // the app will ask permission and this method needs to be invoked again (done for backward compat).
     if (!calendarPermissionGranted(Manifest.permission.WRITE_CALENDAR)) {
-      requestWritePermission();
-      this.callback.error("Please allow Write access to the Calendar and try again.");
+      requestWritePermission(PERMISSION_REQCODE_CREATE_EVENT);
       return;
     }
 
@@ -431,14 +517,18 @@ public class Calendar extends CordovaPlugin {
                 argObject.getLong("endTime"),
                 getPossibleNullString("notes", argObject),
                 getPossibleNullString("location", argObject),
-                argOptionsObject.optLong("firstReminderMinutes"),
-                argOptionsObject.optLong("secondReminderMinutes"),
+                argOptionsObject.optLong("firstReminderMinutes", -1),
+                argOptionsObject.optLong("secondReminderMinutes", -1),
                 getPossibleNullString("recurrence", argOptionsObject),
                 argOptionsObject.optInt("recurrenceInterval"),
                 argOptionsObject.optLong("recurrenceEndTime"),
                 argOptionsObject.optInt("calendarId", 1),
                 getPossibleNullString("url", argOptionsObject));
-            callback.success(createdEventID);
+            if (createdEventID != null) {
+              callback.success(createdEventID);
+            } else {
+              callback.error("Fail to create an event");
+            }
           } catch (JSONException e) {
             e.printStackTrace();
           }
@@ -453,18 +543,16 @@ public class Calendar extends CordovaPlugin {
   private static String getPossibleNullString(String param, JSONObject from) {
     return from.isNull(param) || "null".equals(from.optString(param)) ? null : from.optString(param);
   }
-  
+
   private void listEventsInRange(JSONArray args) {
     // note that if the dev didn't call requestReadPermission before calling this method and calendarPermissionGranted returns false,
     // the app will ask permission and this method needs to be invoked again (done for backward compat).
     if (!calendarPermissionGranted(Manifest.permission.READ_CALENDAR)) {
-      requestReadPermission();
-      this.callback.error("Please allow Read access to the Calendar and try again.");
+      requestReadPermission(PERMISSION_REQCODE_LIST_EVENTS_IN_RANGE);
       return;
     }
     try {
-    final JSONObject jsonFilter = args.getJSONObject(0);
-      JSONArray result = new JSONArray();
+      final JSONObject jsonFilter = args.getJSONObject(0);
       long input_start_date = jsonFilter.optLong("startTime");
       long input_end_date = jsonFilter.optLong("endTime");
 
@@ -474,7 +562,7 @@ public class Calendar extends CordovaPlugin {
       } else {
         l_eventUri = Uri.parse("content://calendar/instances/when/" + String.valueOf(input_start_date) + "/" + String.valueOf(input_end_date));
       }
-    
+
       cordova.getThreadPool().execute(new Runnable() {
         @Override
         public void run() {
@@ -495,7 +583,7 @@ public class Calendar extends CordovaPlugin {
           calendar_end.setTime(date_end);
 
           //projection of DB columns
-          String[] l_projection = new String[]{"calendar_id", "title", "begin", "end", "eventLocation", "allDay"};
+          String[] l_projection = new String[]{"calendar_id", "title", "begin", "end", "eventLocation", "allDay", "_id"};
 
           //actual query
           Cursor cursor = contentResolver.query(
@@ -513,26 +601,28 @@ public class Calendar extends CordovaPlugin {
               "begin ASC");
 
           int i = 0;
-          while (cursor.moveToNext()) {
-            try {
-              result.put(
-                  i++,
-                  new JSONObject()
-                      .put("calendar_id", cursor.getString(cursor.getColumnIndex("calendar_id")))
-                      .put("title", cursor.getString(cursor.getColumnIndex("title")))
-                      .put("dtstart", cursor.getLong(cursor.getColumnIndex("begin")))
-                      .put("dtend", cursor.getLong(cursor.getColumnIndex("end")))
-                      .put("eventLocation", cursor.getString(cursor.getColumnIndex("eventLocation")) != null ? cursor.getString(cursor.getColumnIndex("eventLocation")) : "")
-                      .put("allDay", cursor.getInt(cursor.getColumnIndex("allDay")))
-              );
-            } catch (JSONException e) {
-              e.printStackTrace();
+          if (cursor != null) {
+            while (cursor.moveToNext()) {
+              try {
+                result.put(
+                    i++,
+                    new JSONObject()
+                        .put("calendar_id", cursor.getString(cursor.getColumnIndex("calendar_id")))
+                        .put("event_id", cursor.getString(cursor.getColumnIndex("_id")))
+                        .put("title", cursor.getString(cursor.getColumnIndex("title")))
+                        .put("dtstart", cursor.getLong(cursor.getColumnIndex("begin")))
+                        .put("dtend", cursor.getLong(cursor.getColumnIndex("end")))
+                        .put("eventLocation", cursor.getString(cursor.getColumnIndex("eventLocation")) != null ? cursor.getString(cursor.getColumnIndex("eventLocation")) : "")
+                        .put("allDay", cursor.getInt(cursor.getColumnIndex("allDay")))
+                );
+              } catch (JSONException e) {
+                e.printStackTrace();
+              }
             }
+            cursor.close();
           }
-          cursor.close();
 
-          PluginResult res = new PluginResult(PluginResult.Status.OK, result);
-          callback.sendPluginResult(res);
+          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
         }
       });
     } catch (JSONException e) {
@@ -540,7 +630,7 @@ public class Calendar extends CordovaPlugin {
       callback.error(e.getMessage());
     }
   }
-  
+
   public void onActivityResult(int requestCode, int resultCode, Intent data) {
     if (requestCode == RESULT_CODE_CREATE) {
       if (resultCode == Activity.RESULT_OK || resultCode == Activity.RESULT_CANCELED) {

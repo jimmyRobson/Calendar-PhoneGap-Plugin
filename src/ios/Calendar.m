@@ -469,6 +469,7 @@
                                   event.calendar.title, @"calendar",
                                   [df stringFromDate:event.startDate], @"startDate",
                                   [df stringFromDate:event.endDate], @"endDate",
+                                  [df stringFromDate:event.lastModifiedDate], @"lastModifiedDate",
                                   nil];
     // optional fields
     if (event.location != nil) {
@@ -887,7 +888,9 @@
     controller.event = myEvent;
     controller.eventStore = self.eventStore;
     controller.editViewDelegate = self;
-    [self.viewController presentViewController:controller animated:YES completion:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.viewController presentViewController:controller animated:YES completion:nil];
+    });
   }];
 }
 
